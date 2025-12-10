@@ -1,367 +1,164 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Generator</title>
+import React, { useState } from 'react';
+import { Sparkles, X, Download, AlertCircle } from 'lucide-react';
+
+export default function App() {
+  const [prompt, setPrompt] = useState('');
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const generateImage = async () => {
+    if (!prompt) return;
     
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Custom Styles -->
-    <style>
-        /* Use the Inter font family */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* bg-gray-900 */
-        }
-        /* Custom scrollbar for a more polished look */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1f2937; /* bg-gray-800 */
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4f46e5; /* indigo-600 */
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #6366f1; /* indigo-500 */
-        }
-        /* Simple spinner animation */
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #ffffff;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-        /* Add a subtle animation for the feature buttons */
-        .gemini-feature-btn {
-            transition: all 0.3s ease-in-out;
-        }
-        .gemini-feature-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-    </style>
-</head>
-<body class="text-white">
+    setLoading(true);
+    setError('');
+    setGeneratedImage(null);
 
-    <div class="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen">
+    try {
+      // Create a random seed to ensure a new image is generated even for the same prompt
+      const seed = Math.floor(Math.random() * 1000000);
+      const encodedPrompt = encodeURIComponent(prompt);
+      
+      // Using Pollinations.ai (Free, No Key Required)
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
 
-        <!-- Header -->
-        <header class="text-center mb-8 md:mb-12">
-            <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-                AI Image Generator
-            </h1>
-            <p class="text-gray-400 mt-2 text-lg">Bring your imagination to life with the power of AI.</p>
-        </header>
+      // Fetch the image as a blob to handle loading state and errors properly
+      const response = await fetch(imageUrl);
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate image. The service might be busy.');
+      }
 
-        <!-- Main Content: Generator -->
-        <main class="w-full max-w-2xl bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/10 p-6 md:p-8">
-            
-            <!-- Prompt Input Area -->
-            <div class="flex flex-col gap-4">
-                <label for="prompt-input" class="text-lg font-semibold text-gray-200">Enter your prompt</label>
-                <textarea id="prompt-input" rows="3" class="w-full p-4 bg-gray-900 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-300 resize-none placeholder-gray-500" placeholder="e.g., A majestic lion wearing a crown, photorealistic, 4k"></textarea>
-                
-                <button id="generate-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 ease-in-out flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
-                    <span>Generate Image</span>
-                </button>
-            </div>
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setGeneratedImage(objectUrl);
 
-            <!-- Image Display Area -->
-            <div id="image-container" class="mt-8 w-full aspect-square bg-gray-900 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-700 transition-all duration-300 hidden">
-                <!-- Loading Spinner -->
-                <div id="loader" class="spinner hidden"></div>
-                <!-- Generated Image -->
-                <img id="generated-image" src="" alt="Generated AI Image" class="w-full h-full object-contain rounded-lg hidden">
-                <!-- Placeholder -->
-                <div id="placeholder" class="text-center text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                    <p>Your generated image will appear here.</p>
-                </div>
-            </div>
+    } catch (err) {
+      console.error(err);
+      setError('Generation failed. Please try again in a moment.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <!-- Actions for Generated Image -->
-            <div id="actions-container" class="mt-4 flex flex-col gap-4 hidden">
-                 <div class="flex items-center justify-center gap-4">
-                    <a id="download-btn" href="#" download="ai-generated-image.png" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                        Download
-                    </a>
-                    <button id="generate-caption-btn" class="gemini-feature-btn inline-block bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-6 rounded-lg shadow-md">
-                        ✨ Generate Caption
-                    </button>
-                </div>
-                <!-- Caption Display Area -->
-                <div id="caption-container" class="bg-gray-900 p-4 rounded-lg hidden">
-                     <p id="caption-text" class="text-gray-300 italic"></p>
-                </div>
-            </div>
+  const handleDownload = () => {
+    if (generatedImage) {
+      const link = document.createElement('a');
+      link.href = generatedImage;
+      link.download = `ai-generated-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
-        </main>
+  return (
+    <div className="min-h-screen bg-[#0B1120] text-white font-sans flex flex-col relative overflow-hidden">
+      
+      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 w-full max-w-4xl mx-auto z-10">
         
-        <!-- Footer -->
-        <footer class="text-center mt-auto pt-8">
-            <p class="text-gray-500">Created with ❤️ By Tanay</p>
-        </footer>
-
-    </div>
-
-    <!-- Error Modal -->
-    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-sm w-full text-center">
-            <h3 class="text-2xl font-bold text-red-500 mb-4">Error</h3>
-            <p id="error-message" class="text-gray-300 mb-6">Something went wrong. Please try again.</p>
-            <button id="close-modal-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-all duration-300">Close</button>
+        {/* Header */}
+        <div className="text-center mb-12 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+              AI Image Generator
+            </span>
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Bring your imagination to life with the power of AI.
+          </p>
         </div>
-    </div>
 
-    <script>
-        // --- DOM Element References ---
-        const generateBtn = document.getElementById('generate-btn');
-        const generateCaptionBtn = document.getElementById('generate-caption-btn');
-        const promptInput = document.getElementById('prompt-input');
-        const imageContainer = document.getElementById('image-container');
-        const loader = document.getElementById('loader');
-        const generatedImage = document.getElementById('generated-image');
-        const placeholder = document.getElementById('placeholder');
-        const actionsContainer = document.getElementById('actions-container');
-        const downloadBtn = document.getElementById('download-btn');
-        const captionContainer = document.getElementById('caption-container');
-        const captionText = document.getElementById('caption-text');
-        const errorModal = document.getElementById('error-modal');
-        const errorMessage = document.getElementById('error-message');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        
-        let lastUsedPrompt = ""; // Store the prompt used for generation
-
-        // --- API Configuration ---
-        const apiKey = "AIzaSyC3G5MnBlCFMHOgc_VMcwCybgjHrwhvbnQ"; // The API key has been added.
-        // --- UPDATED: Switched to a different model to resolve billing error ---
-        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
-        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        // --- Functions ---
-
-        /**
-         * Shows the error modal with a specific message.
-         * @param {string} message - The error message to display.
-         */
-        function showError(message = "An unknown error occurred. Please check the console or try again later.") {
-            errorMessage.textContent = message;
-            errorModal.classList.remove('hidden');
-        }
-
-        /** Hides the error modal. */
-        function hideError() {
-            errorModal.classList.add('hidden');
-        }
-        
-        /**
-         * Toggles the UI state for button loading.
-         * @param {HTMLButtonElement} button - The button to update.
-         * @param {boolean} isLoading - True if the button should be in a loading state.
-         * @param {string} originalText - The original text of the button.
-         */
-        function setButtonLoading(button, isLoading, originalText = '') {
-            button.disabled = isLoading;
-            if (isLoading) {
-                button.classList.add('opacity-50', 'cursor-not-allowed');
-                button.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
-            } else {
-                button.classList.remove('opacity-50', 'cursor-not-allowed');
-                button.innerHTML = originalText;
-            }
-        }
-
-        /**
-         * Generic function to call the Gemini Text API with exponential backoff.
-         * @param {string} fullPrompt - The complete prompt to send to the API.
-         * @returns {Promise<string>} - The generated text from the API.
-         */
-        async function callTextApiWithRetry(fullPrompt, maxRetries = 3, initialDelay = 1000) {
-            const payload = { contents: [{ role: "user", parts: [{ text: fullPrompt }] }] };
-            let delay = initialDelay;
-
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(textApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                         if (response.status >= 500 && i < maxRetries - 1) {
-                            console.warn(`Server error (${response.status}). Retrying in ${delay}ms...`);
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                            continue;
-                        }
-                        const errorData = await response.json();
-                        throw new Error(errorData?.error?.message || `HTTP error! Status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-                        return result.candidates[0].content.parts[0].text;
-                    } else {
-                        throw new Error("Invalid response structure from text API.");
-                    }
-                } catch (error) {
-                    if (i === maxRetries - 1) throw error;
-                }
-            }
-        }
-
-        /**
-         * Fetches an image from the Gemini API with exponential backoff.
-         * @param {string} userPrompt - The text prompt for image generation.
-         * @returns {Promise<string>} - The base64 encoded image data.
-         */
-        async function generateImageWithRetry(userPrompt, maxRetries = 3, initialDelay = 1000) {
-            // --- UPDATED: New payload structure for the generateContent method ---
-            const payload = {
-                contents: [{
-                    parts: [{ text: userPrompt }]
-                }],
-                generationConfig: {
-                    responseModalities: ['TEXT', 'IMAGE']
-                },
-            };
-
-            let delay = initialDelay;
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(imageApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        if (response.status >= 500 && i < maxRetries - 1) {
-                            console.warn(`Server error (${response.status}). Retrying in ${delay}ms...`);
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                            continue;
-                        }
-                        const errorData = await response.json();
-                        throw new Error(errorData?.error?.message || `HTTP error! Status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    
-                    // --- UPDATED: New response parsing for the generateContent method ---
-                    const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    if (base64Data) {
-                        return base64Data;
-                    } else {
-                        // Check for a text-based error message in the response
-                        const textError = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        throw new Error(textError || "API response did not contain valid image data.");
-                    }
-                } catch (error) {
-                    if (i === maxRetries - 1) throw error;
-                }
-            }
-        }
-
-        /**
-         * Handles the "Generate Image" button click.
-         */
-        async function handleGenerateImage() {
-            lastUsedPrompt = promptInput.value.trim();
-            if (!lastUsedPrompt) {
-                showError("Please enter a prompt to generate an image.");
-                return;
-            }
-
-            // Set loading state for the main generator
-            generateBtn.disabled = true;
-            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            loader.classList.remove('hidden');
-            imageContainer.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            generatedImage.classList.add('hidden');
-            actionsContainer.classList.add('hidden');
-            captionContainer.classList.add('hidden');
-
-            try {
-                const base64ImageData = await generateImageWithRetry(lastUsedPrompt);
-                const imageUrl = `data:image/png;base64,${base64ImageData}`;
-                
-                generatedImage.src = imageUrl;
-                generatedImage.classList.remove('hidden');
-                
-                downloadBtn.href = imageUrl;
-                actionsContainer.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Failed to generate image:", error);
-                showError(error.message);
-                imageContainer.classList.add('hidden');
-                placeholder.classList.remove('hidden');
-            } finally {
-                generateBtn.disabled = false;
-                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                loader.classList.add('hidden');
-            }
-        }
-        
-        /**
-         * Handles the "Generate Caption" button click.
-         */
-        async function handleGenerateCaption() {
-            if (!lastUsedPrompt) {
-                showError("No prompt was used to generate the image. Cannot create a caption.");
-                return;
-            }
-            const originalButtonText = generateCaptionBtn.innerHTML;
-            setButtonLoading(generateCaptionBtn, true);
-            captionContainer.classList.add('hidden');
-
-            const captionPrompt = `You are a creative social media manager. Write a short, engaging, and imaginative caption for an image that was generated from the following prompt. Include a couple of relevant hashtags. The prompt was: "${lastUsedPrompt}"`;
+        {/* Card Container */}
+        <div className="w-full bg-[#131B2E] border border-gray-800 rounded-2xl p-6 md:p-8 shadow-2xl shadow-purple-900/10 backdrop-blur-sm">
             
-            try {
-                const caption = await callTextApiWithRetry(captionPrompt);
-                captionText.innerText = caption.trim();
-                captionContainer.classList.remove('hidden');
-            } catch (error) {
-                console.error("Failed to generate caption:", error);
-                showError(error.message);
-            } finally {
-                setButtonLoading(generateCaptionBtn, false, originalButtonText);
-            }
-        }
+            {/* Input Section */}
+            <div className="space-y-2 mb-6">
+                <label className="block text-gray-300 font-medium ml-1">Enter your prompt</label>
+                <div className="relative">
+                    <textarea 
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="A futuristic city with flying cars at sunset, cyberpunk style..."
+                        className="w-full bg-[#0B1120] border border-gray-700 rounded-xl p-4 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all resize-none h-32"
+                    />
+                </div>
+            </div>
 
-        // --- Event Listeners ---
-        generateBtn.addEventListener('click', handleGenerateImage);
-        generateCaptionBtn.addEventListener('click', handleGenerateCaption);
-        closeModalBtn.addEventListener('click', hideError);
-        
-        promptInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                handleGenerateImage();
-            }
-        });
+            {/* Generate Button */}
+            <button
+                onClick={generateImage}
+                disabled={loading || !prompt}
+                className={`
+                    w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg
+                    ${loading || !prompt 
+                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white hover:shadow-purple-500/25 active:scale-[0.99]'
+                    }
+                `}
+            >
+                {loading ? (
+                    <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Generating...
+                    </>
+                ) : (
+                    <>
+                        <Sparkles className="w-5 h-5" />
+                        Generate Image
+                    </>
+                )}
+            </button>
 
-    </script>
-</body>
-</html>
+            {/* Error Message */}
+            {error && (
+                <div className="mt-6 bg-red-900/20 border border-red-900/50 rounded-lg p-4 flex items-center gap-3 text-red-200">
+                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            {/* Result Area */}
+            {(generatedImage || loading) && (
+                <div className="mt-8 pt-8 border-t border-gray-800 animate-in fade-in duration-500">
+                    <div className="relative rounded-xl overflow-hidden bg-[#0B1120] aspect-square md:aspect-video w-full flex items-center justify-center border border-gray-800 group">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center text-gray-500 space-y-4">
+                                <div className="relative w-16 h-16">
+                                    <div className="absolute inset-0 rounded-full border-4 border-gray-700 opacity-25"></div>
+                                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+                                </div>
+                                <p className="animate-pulse font-medium">Creating masterpiece...</p>
+                            </div>
+                        ) : (
+                            <>
+                                <img 
+                                    src={generatedImage} 
+                                    alt="Generated AI Art" 
+                                    className="w-full h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 backdrop-blur-sm">
+                                    <button 
+                                        onClick={handleDownload}
+                                        className="bg-white text-gray-900 px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-gray-100 transition-colors transform hover:scale-105"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 text-center text-gray-500 text-sm">
+          Created with <span className="text-red-500">❤️</span> By Tanay
+        </div>
+
+      </main>
+    </div>
+  );
+}
